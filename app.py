@@ -1,5 +1,11 @@
 from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+import os
+
 app = Flask(__name__)
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'planets.db')
+db = SQLAlchemy(app)
 
 
 @app.route('/')
@@ -61,7 +67,7 @@ def add_planet():
 
 @app.route('/update_planet', methods=['PUT'])
 def update_planet():
-    id = int(request.form['planet_id'])
+    planet_id = int(request.form['planet_id'])
     planet_name = request.form['planet_name']
     planet_type = request.form['planet_type']
     home_star = request.form['home_star']
@@ -77,4 +83,6 @@ def remove_planet(planet_id: int):
 
 
 if __name__ == '__main__':
+    db.drop_all()
+    db.create_all()
     app.run()

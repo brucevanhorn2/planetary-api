@@ -4,4 +4,5 @@ include
 lib
 static
 templates
+*.db
 __pycache__

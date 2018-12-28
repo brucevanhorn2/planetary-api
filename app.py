@@ -2,13 +2,15 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import os
 from sqlalchemy import Column, Integer, String, Float
-from sqlalchemy.ext.declarative import declarative_base
 from flask_mail import Mail, Message
 
-Base = declarative_base()
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'planets.db')
+app.config['MAIL_SERVER'] = 'smtp.mailtrap.io'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+
 db = SQLAlchemy(app)
 mail = Mail(app)
 
@@ -82,13 +84,10 @@ def register():
 def retrieve_password(email: str):
     user = User.query.filter_by(email=email)
     if user:
-        msg = Message("Your planetary API password is:" + user.password,
+        msg = Message("Your planetary API password is: " + user.password,
                       sender="admin@planetary-api.com",
                       recipients=[email])
-
-        with Mail.connect() as conn:
-            conn.send(msg)
-
+        mail.send(msg)
         return jsonify(message="Password sent to " + email)
     else:
         return jsonify(message="That email doesn't exist."), 404

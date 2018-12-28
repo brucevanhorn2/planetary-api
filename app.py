@@ -16,7 +16,7 @@ class User(db.Model):
     id = Column(Integer, primary_key=True)
     first_name = Column(String)
     last_name = Column(String)
-    email = Column(String)
+    email = Column(String, unique=True)
     password = Column(String)
 
     def __repr__(self):
@@ -27,7 +27,7 @@ class User(db.Model):
 class Planet(db.Model):
     __tablename__ = 'planets'
     planet_id = Column(Integer, primary_key=True)
-    planet_name = Column(String)
+    planet_name = Column(String, unique=True)
     planet_type = Column(String)
     home_star = Column(String)
     mass = Column(Float)
@@ -35,7 +35,7 @@ class Planet(db.Model):
     distance = Column(Float)
 
     def __repr__(self):
-        return "<User(planet_id='%s', planet_name='%s', planet_type='%s', home_star='%s', mass='%f', radius='%f', " \
+        return "<Planet(planet_id='%s', planet_name='%s', planet_type='%s', home_star='%s', mass='%f', radius='%f', " \
                "distance='%f')>" % (self.planet_id, self.planet_name, self.planet_type, self.home_star, self.mass,
                                     self.radius, self.distance)
 
@@ -60,14 +60,20 @@ def parameters(name: str, age: int):
 
 @app.route('/register', methods=['POST'])
 def register():
-    first_name = request.form['first_name']
-    last_name = request.form['last_name']
     email = request.form['email']
-    password = request.form['password']
-    user = User(first_name=first_name, last_name=last_name, email=email, password=password)
-    db.session.add(user)
-    db.session.commit()
-    return jsonify(first_name=first_name, last_name=last_name, email=email)
+
+    test = User.query.filter_by(email=email).first()
+
+    if test:
+        return jsonify(message="That email already exists"), 409
+    else:
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        password = request.form['password']
+        user = User(first_name=first_name, last_name=last_name, email=email, password=password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify(message="User created successfully"), 201
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -84,25 +90,37 @@ def planets():
 
 @app.route('/planet_details/<int:planet_id>')
 def planet_details(planet_id: int):
-    return jsonify(Planet.query.filter_by(planet_id=planet_id).first())
+    planet = Planet.query.filter_by(planet_id=planet_id).first()
+    if planet:
+        return jsonify(planet)
+    else:
+        return jsonify(message="That planet does not exist"), 404
 
 
 @app.route('/add_planet', methods=['POST'])
 def add_planet():
     planet_name = request.form['planet_name']
-    planet_type = request.form['planet_type']
-    home_star = request.form['home_star']
-    mass = float(request.form['mass'])
-    circumference = float(request.form['radius'])
-    radius = float(request.form['distance'])
+    test = Planet.query.filter_by(planet_name=planet_name)
+    if test:
+        return jsonify(message="There is already a planet with that name"), 409
+    else:
+        planet_type = request.form['planet_type']
+        home_star = request.form['home_star']
+        mass = float(request.form['mass'])
+        circumference = float(request.form['radius'])
+        radius = float(request.form['distance'])
 
-    new_planet = Planet(planet_name=planet_name, planet_type=planet_type, home_star=home_star,
-                        mass=mass, circumference=circumference, radius=radius)
+        new_planet = Planet(planet_name=planet_name,
+                            planet_type=planet_type,
+                            home_star=home_star,
+                            mass=mass,
+                            circumference=circumference,
+                            radius=radius)
 
-    db.session.add(new_planet)
-    db.session.commit()
+        db.session.add(new_planet)
+        db.session.commit()
 
-    return jsonify(message="You added a planet")
+        return jsonify(message="You added a planet"), 201
 
 
 @app.route('/update_planet', methods=['PUT'])
@@ -110,20 +128,27 @@ def update_planet():
     planet_id = int(request.form['planet_id'])
 
     planet = Planet.query.filter_by(planet_id=planet_id)
-
-    planet.planet_name = request.form['planet_name']
-    planet.planet_type = request.form['planet_type']
-    planet.home_star = request.form['home_star']
-    planet.mass = float(request.form['mass'])
-    planet.radius = float(request.form['radius'])
-    planet.distance = float(request.form['distance'])
-    db.session.commit()
-    return jsonify(message="You updated a planet")
+    if planet:
+        planet.planet_name = request.form['planet_name']
+        planet.planet_type = request.form['planet_type']
+        planet.home_star = request.form['home_star']
+        planet.mass = float(request.form['mass'])
+        planet.radius = float(request.form['radius'])
+        planet.distance = float(request.form['distance'])
+        db.session.commit()
+        return jsonify(message="You updated a planet")
+    else:
+        return jsonify(message="That planet does not exist"), 404
 
 
 @app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
 def remove_planet(planet_id: int):
-    return jsonify(message="You deleted a planet: " + str(planet_id))
+    planet = Planet.query.filter_by(planet_id=planet_id).first()
+    if planet:
+        db.session.delete(planet)
+        return jsonify(message="You deleted a planet: " + str(planet_id))
+    else:
+        return jsonify(message="That planet doesn't exist."), 404
 
 
 if __name__ == '__main__':

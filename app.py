@@ -3,12 +3,14 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
+from flask_mail import Mail, Message
 
 Base = declarative_base()
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'planets.db')
 db = SQLAlchemy(app)
+mail = Mail(app)
 
 
 class User(db.Model):
@@ -74,6 +76,22 @@ def register():
         db.session.add(user)
         db.session.commit()
         return jsonify(message="User created successfully"), 201
+
+
+@app.route('/retrieve_password/<string:email>', methods=['GET'])
+def retrieve_password(email: str):
+    user = User.query.filter_by(email=email)
+    if user:
+        msg = Message("Your planetary API password is:" + user.password,
+                      sender="admin@planetary-api.com",
+                      recipients=[email])
+
+        with Mail.connect() as conn:
+            conn.send(msg)
+
+        return jsonify(message="Password sent to " + email)
+    else:
+        return jsonify(message="That email doesn't exist."), 404
 
 
 @app.route('/login', methods=['GET', 'POST'])

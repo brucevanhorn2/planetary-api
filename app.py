@@ -3,8 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 from sqlalchemy import Column, Integer, String, Float
 from flask_mail import Mail, Message
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+
 
 app = Flask(__name__)
+app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
+jwt = JWTManager(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'planets.db')
 app.config['MAIL_SERVER'] = 'smtp.mailtrap.io'
@@ -97,7 +101,12 @@ def retrieve_password(email: str):
 def login():
     email = request.form['email']
     password = request.form['password']
-    return jsonify(message="Login succeeded")
+    test = User.query.filter_by(email=email, password=password)
+    if test:
+        access_token = create_access_token(identity=email)
+        return jsonify(message="Login succeeded", access_token=access_token)
+    else:
+        return jsonify(message="Bad email or password"), 401
 
 
 @app.route('/planets', methods=['GET'])
@@ -115,6 +124,7 @@ def planet_details(planet_id: int):
 
 
 @app.route('/add_planet', methods=['POST'])
+@jwt_required
 def add_planet():
     planet_name = request.form['planet_name']
     test = Planet.query.filter_by(planet_name=planet_name)
@@ -141,6 +151,7 @@ def add_planet():
 
 
 @app.route('/update_planet', methods=['PUT'])
+@jwt_required
 def update_planet():
     planet_id = int(request.form['planet_id'])
 
@@ -159,6 +170,7 @@ def update_planet():
 
 
 @app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
+@jwt_required
 def remove_planet(planet_id: int):
     planet = Planet.query.filter_by(planet_id=planet_id).first()
     if planet:

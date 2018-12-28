@@ -26,40 +26,54 @@ def register():
     last_name = request.form['last_name']
     email = request.form['email']
     password = request.form['password']
+    return jsonify(first_name=first_name, last_name=last_name, email=email, password=password)
     # TODO:  add a data access layer
 
 
-@app.route('/login/<string:email>/<string:password>', methods=['GET','POST'])
-def login(email: str, password: str):
-    if email and password:
-        return jsonify(message="Login succeeded")
-    else:
-        return jsonify(message="No empty strings allowed!"), 401
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    email = request.form['email']
+    password = request.form['password']
+    return jsonify(message="Login succeeded")
 
 
 @app.route('/planets', methods=['GET'])
 def planets():
-    pass
+    return jsonify(message="This is a list of planets")
 
 
-@app.route('/planet_details/<int:planet_id')
+@app.route('/planet_details/<int:planet_id>')
 def planet_details(planet_id: int):
-    pass
+    return jsonify(message="You asked about planet " + str(planet_id))
 
 
 @app.route('/add_planet', methods=['POST'])
 def add_planet():
-    pass
+    planet_name = request.form['planet_name']
+    planet_type = request.form['planet_type']
+    home_star = request.form['home_star']
+    mass = float(request.form['mass'])
+    circumference = float(request.form['radius'])
+    radius = float(request.form['distance'])
+
+    return jsonify(message="You added a planet")
 
 
 @app.route('/update_planet', methods=['PUT'])
 def update_planet():
-    pass
+    id = int(request.form['planet_id'])
+    planet_name = request.form['planet_name']
+    planet_type = request.form['planet_type']
+    home_star = request.form['home_star']
+    mass = float(request.form['mass'])
+    radius = float(request.form['radius'])
+    distance = float(request.form['distance'])
+    return jsonify(message="You updated a planet")
 
 
-@app.route('/remove_planet', methods=['DEL'])
-def remove_planet():
-    pass
+@app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
+def remove_planet(planet_id: int):
+    return jsonify(message="You deleted a planet: " + str(planet_id))
 
 
 if __name__ == '__main__':

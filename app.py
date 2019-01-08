@@ -4,6 +4,7 @@ import os
 from sqlalchemy import Column, Integer, String, Float
 from flask_mail import Mail, Message
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+import click
 
 
 app = Flask(__name__)
@@ -17,6 +18,18 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
 db = SQLAlchemy(app)
 mail = Mail(app)
+
+
+@app.cli.command('db_create')
+def db_create():
+    db.create_all()
+    print('Database created')
+
+
+@app.cli.command('db_drop')
+def db_destroy():
+    db.drop_all()
+    print('Database dropped!')
 
 
 class User(db.Model):
@@ -181,6 +194,4 @@ def remove_planet(planet_id: int):
 
 
 if __name__ == '__main__':
-    db.drop_all()
-    db.create_all()
     app.run()

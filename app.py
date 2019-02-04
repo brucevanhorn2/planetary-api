@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import os
+import json
 from sqlalchemy import Column, Integer, String, Float
 from flask_mail import Mail, Message
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
@@ -76,6 +77,15 @@ class Planet(db.Model):
     radius = Column(Float)
     distance = Column(Float)
 
+    def to_dict(self):
+        return {"planet_id": self.planet_id,
+                "planet_name": self.planet_name,
+                "planet_type":  self.planet_type,
+                "home_star": self.home_star,
+                "mass": self.mass,
+                "radius": self.radius,
+                "distance": self.distance
+        }
     def __repr__(self):
         return "<Planet(planet_id='%s', planet_name='%s', planet_type='%s', home_star='%s', mass='%f', radius='%f', " \
                "distance='%f')>" % (self.planet_id, self.planet_name, self.planet_type, self.home_star, self.mass,
@@ -150,7 +160,11 @@ def login():
 
 @app.route('/planets', methods=['GET'])
 def planets():
-    return jsonify(Planet.query.all())
+    planets = Planet.query.all()
+    friendly_list = []
+    for planet in planets:
+        friendly_list.append({"planet_name": planet.planet_name})
+    return jsonify(friendly_list)
 
 
 @app.route('/planet_details/<int:planet_id>')

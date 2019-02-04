@@ -99,7 +99,7 @@ def hello_world():
 
 @app.route('/super_simple', methods=['GET'])
 def super_simple():
-    return jsonify(message='Hello from the Planetary API')
+    return jsonify(message='Hello from the Planetary API'), 200
 
 
 @app.route('/parameters/<string:name>/<int:age>', methods=['GET'])

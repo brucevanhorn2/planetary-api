@@ -4,7 +4,7 @@ import os
 from sqlalchemy import Column, Integer, String, Float
 from flask_mail import Mail, Message
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
-
+import click
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
@@ -17,6 +17,40 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
 db = SQLAlchemy(app)
 mail = Mail(app)
+
+
+@app.cli.command('db_create')
+def db_create():
+    db.create_all()
+    print('Database created')
+
+
+@app.cli.command('db_drop')
+def db_destroy():
+    db.drop_all()
+    print('Database dropped!')
+
+
+@app.cli.command('db_seed')
+def db_seed():
+    mercury = Planet(planet_name='Mercury', planet_type="Class D", home_star="Sol",
+                     mass=3.258e23, radius=1516, distance=35.98e6)
+
+    venus = Planet(planet_name='Venus', planet_type="Class K", home_star="Sol",
+                   mass=4.867e24, radius=3760, distance=67.24e6)
+
+    earth = Planet(planet_name='Earth', planet_type="Class M", home_star="Sol",
+                   mass=5.972e24, radius=3959, distance=92.96e6)
+
+    db.session.add(mercury)
+    db.session.add(venus)
+    db.session.add(earth)
+
+    test_user = User(first_name='William', last_name='Herschel', email="test@test.com", password="P@ssw0rd")
+    db.session.add(test_user)
+
+    db.session.commit()
+    print('Database seeded')
 
 
 class User(db.Model):
@@ -99,8 +133,13 @@ def retrieve_password(email: str):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    email = request.form['email']
-    password = request.form['password']
+    if request.is_json:
+        email = request.json['email']
+        password = request.json['password']
+    else:
+        email = request.form['email']
+        password = request.form['password']
+
     test = User.query.filter_by(email=email, password=password)
     if test:
         access_token = create_access_token(identity=email)
@@ -126,26 +165,41 @@ def planet_details(planet_id: int):
 @app.route('/add_planet', methods=['POST'])
 @jwt_required
 def add_planet():
-    planet_name = request.form['planet_name']
-    test = Planet.query.filter_by(planet_name=planet_name)
-    if test:
-        return jsonify(message="There is already a planet with that name"), 409
-    else:
-        planet_type = request.form['planet_type']
-        home_star = request.form['home_star']
-        mass = float(request.form['mass'])
-        circumference = float(request.form['radius'])
-        radius = float(request.form['distance'])
+    if request.is_json:
+        planet_name = request.planet_name
+        planet_type = request.planet_type
+        home_star = request.home_star
+        mass = float(request.mass)
+        radius = float(request.distance)
+        distance = float(request.distance)
 
         new_planet = Planet(planet_name=planet_name,
                             planet_type=planet_type,
                             home_star=home_star,
                             mass=mass,
-                            circumference=circumference,
-                            radius=radius)
+                            radius=radius,
+                            distance=distance)
+    else:
+        planet_name = request.form['planet_name']
+        test = Planet.query.filter_by(planet_name=planet_name)
+        if test:
+            return jsonify(message="There is already a planet with that name"), 409
+        else:
+            planet_type = request.form['planet_type']
+            home_star = request.form['home_star']
+            mass = float(request.form['mass'])
+            radius = float(request.form['distance'])
+            distance = float(request.form['distance'])
 
-        db.session.add(new_planet)
-        db.session.commit()
+            new_planet = Planet(planet_name=planet_name,
+                                planet_type=planet_type,
+                                home_star=home_star,
+                                mass=mass,
+                                radius=radius,
+                                distance=distance)
+
+            db.session.add(new_planet)
+            db.session.commit()
 
         return jsonify(message="You added a planet"), 201
 
@@ -153,20 +207,23 @@ def add_planet():
 @app.route('/update_planet', methods=['PUT'])
 @jwt_required
 def update_planet():
-    planet_id = int(request.form['planet_id'])
-
-    planet = Planet.query.filter_by(planet_id=planet_id)
-    if planet:
-        planet.planet_name = request.form['planet_name']
-        planet.planet_type = request.form['planet_type']
-        planet.home_star = request.form['home_star']
-        planet.mass = float(request.form['mass'])
-        planet.radius = float(request.form['radius'])
-        planet.distance = float(request.form['distance'])
-        db.session.commit()
-        return jsonify(message="You updated a planet")
+    if request.is_json:
+        pass
     else:
-        return jsonify(message="That planet does not exist"), 404
+        planet_id = int(request.form['planet_id'])
+
+        planet = Planet.query.filter_by(planet_id=planet_id)
+        if planet:
+            planet.planet_name = request.form['planet_name']
+            planet.planet_type = request.form['planet_type']
+            planet.home_star = request.form['home_star']
+            planet.mass = float(request.form['mass'])
+            planet.radius = float(request.form['radius'])
+            planet.distance = float(request.form['distance'])
+            db.session.commit()
+            return jsonify(message="You updated a planet")
+        else:
+            return jsonify(message="That planet does not exist"), 404
 
 
 @app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
@@ -181,6 +238,4 @@ def remove_planet(planet_id: int):
 
 
 if __name__ == '__main__':
-    db.drop_all()
-    db.create_all()
     app.run()

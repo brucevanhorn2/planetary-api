@@ -179,21 +179,6 @@ def planet_details(planet_id: int):
 @app.route('/add_planet', methods=['POST'])
 @jwt_required
 def add_planet():
-    if request.is_json:
-        planet_name = request.planet_name
-        planet_type = request.planet_type
-        home_star = request.home_star
-        mass = float(request.mass)
-        radius = float(request.distance)
-        distance = float(request.distance)
-
-        new_planet = Planet(planet_name=planet_name,
-                            planet_type=planet_type,
-                            home_star=home_star,
-                            mass=mass,
-                            radius=radius,
-                            distance=distance)
-    else:
         planet_name = request.form['planet_name']
         test = Planet.query.filter_by(planet_name=planet_name)
         if test:

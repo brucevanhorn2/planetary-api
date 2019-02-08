@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import os
-import json
 from sqlalchemy import Column, Integer, String, Float
 from flask_mail import Mail, Message
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
@@ -63,6 +62,7 @@ class User(db.Model):
     last_name = Column(String)
     email = Column(String, unique=True)
     password = Column(String)
+
 
 class UserSchema(ma.Schema):
     class Meta:
@@ -131,7 +131,7 @@ def register():
 
 @app.route('/retrieve_password/<string:email>', methods=['GET'])
 def retrieve_password(email: str):
-    user = User.query.filter_by(email=email)
+    user = User.query.filter_by(email=email).first()
     if user:
         msg = Message("Your planetary API password is: " + user.password,
                       sender="admin@planetary-api.com",
@@ -177,6 +177,7 @@ def planet_details(planet_id: int):
 
 
 @app.route('/add_planet', methods=['POST'])
+@jwt_required
 def add_planet():
         planet_name = request.form['planet_name']
         test = Planet.query.filter_by(planet_name=planet_name).first()
@@ -203,7 +204,7 @@ def add_planet():
 
 
 @app.route('/update_planet', methods=['PUT'])
-# @jwt_required
+@jwt_required
 def update_planet():
     planet_id = int(request.form['planet_id'])
 
@@ -222,7 +223,7 @@ def update_planet():
 
 
 @app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
-#@jwt_required
+@jwt_required
 def remove_planet(planet_id: int):
     planet = Planet.query.filter_by(planet_id=planet_id).first()
     if planet:

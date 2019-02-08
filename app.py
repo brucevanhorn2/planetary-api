@@ -5,7 +5,8 @@ import json
 from sqlalchemy import Column, Integer, String, Float
 from flask_mail import Mail, Message
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
-import click
+from flask_marshmallow import Marshmallow
+
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
@@ -17,6 +18,7 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
 db = SQLAlchemy(app)
+ma = Marshmallow(app)
 mail = Mail(app)
 
 
@@ -62,9 +64,13 @@ class User(db.Model):
     email = Column(String, unique=True)
     password = Column(String)
 
-    def __repr__(self):
-        return "<User(first_name='%s', last_name='%s', email='%s', password='%s')>" % (
-            self.first_name, self.last_name, self.email, self.password)
+class UserSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'first_name', 'last_name', 'email', 'password')
+
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
 
 
 class Planet(db.Model):
@@ -77,19 +83,14 @@ class Planet(db.Model):
     radius = Column(Float)
     distance = Column(Float)
 
-    def to_dict(self):
-        return {"planet_id": self.planet_id,
-                "planet_name": self.planet_name,
-                "planet_type":  self.planet_type,
-                "home_star": self.home_star,
-                "mass": self.mass,
-                "radius": self.radius,
-                "distance": self.distance
-        }
-    def __repr__(self):
-        return "<Planet(planet_id='%s', planet_name='%s', planet_type='%s', home_star='%s', mass='%f', radius='%f', " \
-               "distance='%f')>" % (self.planet_id, self.planet_name, self.planet_type, self.home_star, self.mass,
-                                    self.radius, self.distance)
+
+class PlanetSchema(ma.Schema):
+    class Meta:
+        fields = ('planet_id', 'planet_name', 'planet_type', 'home_star', 'mass', 'distance')
+
+
+planet_schema = PlanetSchema()
+planets_schema = PlanetSchema(many=True)
 
 
 @app.route('/')
@@ -160,18 +161,17 @@ def login():
 
 @app.route('/planets', methods=['GET'])
 def planets():
-    planets = Planet.query.all()
-    friendly_list = []
-    for planet in planets:
-        friendly_list.append({"planet_name": planet.planet_name})
-    return jsonify(friendly_list)
+    planets_list = Planet.query.all()
+    result = planets_schema.dump(planets_list)
+    return jsonify(result.data)
 
 
 @app.route('/planet_details/<int:planet_id>')
 def planet_details(planet_id: int):
     planet = Planet.query.filter_by(planet_id=planet_id).first()
     if planet:
-        return jsonify(planet)
+        result = planet_schema.dump(planet)
+        return jsonify(result.data)
     else:
         return jsonify(message="That planet does not exist"), 404
 

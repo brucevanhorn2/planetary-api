@@ -1,11 +1,11 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import os
-import json
 from sqlalchemy import Column, Integer, String, Float
 from flask_mail import Mail, Message
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token
-import click
+from flask_marshmallow import Marshmallow
+
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
@@ -13,10 +13,11 @@ jwt = JWTManager(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'planets.db')
 app.config['MAIL_SERVER'] = 'smtp.mailtrap.io'
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_USERNAME'] = os.environ['MAIL_USERNAME']
+app.config['MAIL_PASSWORD'] = os.environ['MAIL_PASSWORD']
 
 db = SQLAlchemy(app)
+ma = Marshmallow(app)
 mail = Mail(app)
 
 
@@ -63,6 +64,15 @@ class User(db.Model):
     password = Column(String)
 
 
+class UserSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'first_name', 'last_name', 'email', 'password')
+
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+
 class Planet(db.Model):
     __tablename__ = 'planets'
     planet_id = Column(Integer, primary_key=True)
@@ -72,6 +82,15 @@ class Planet(db.Model):
     mass = Column(Float)
     radius = Column(Float)
     distance = Column(Float)
+
+
+class PlanetSchema(ma.Schema):
+    class Meta:
+        fields = ('planet_id', 'planet_name', 'planet_type', 'home_star', 'mass', 'distance')
+
+
+planet_schema = PlanetSchema()
+planets_schema = PlanetSchema(many=True)
 
 
 @app.route('/')
@@ -104,7 +123,7 @@ def register():
 
 @app.route('/retrieve_password/<string:email>', methods=['GET'])
 def retrieve_password(email: str):
-    user = User.query.filter_by(email=email)
+    user = User.query.filter_by(email=email).first()
     if user:
         msg = Message("Your planetary API password is: " + user.password,
                       sender="admin@planetary-api.com",
@@ -134,18 +153,17 @@ def login():
 
 @app.route('/planets', methods=['GET'])
 def planets():
-    planets = Planet.query.all()
-    friendly_list = []
-    for planet in planets:
-        friendly_list.append({"planet_name": planet.planet_name})
-    return jsonify(friendly_list)
+    planets_list = Planet.query.all()
+    result = planets_schema.dump(planets_list)
+    return jsonify(result.data)
 
 
 @app.route('/planet_details/<int:planet_id>')
 def planet_details(planet_id: int):
     planet = Planet.query.filter_by(planet_id=planet_id).first()
     if planet:
-        return jsonify(planet)
+        result = planet_schema.dump(planet)
+        return jsonify(result.data)
     else:
         return jsonify(message="That planet does not exist"), 404
 
@@ -153,23 +171,8 @@ def planet_details(planet_id: int):
 @app.route('/add_planet', methods=['POST'])
 @jwt_required
 def add_planet():
-    if request.is_json:
-        planet_name = request.planet_name
-        planet_type = request.planet_type
-        home_star = request.home_star
-        mass = float(request.mass)
-        radius = float(request.distance)
-        distance = float(request.distance)
-
-        new_planet = Planet(planet_name=planet_name,
-                            planet_type=planet_type,
-                            home_star=home_star,
-                            mass=mass,
-                            radius=radius,
-                            distance=distance)
-    else:
         planet_name = request.form['planet_name']
-        test = Planet.query.filter_by(planet_name=planet_name)
+        test = Planet.query.filter_by(planet_name=planet_name).first()
         if test:
             return jsonify(message="There is already a planet with that name"), 409
         else:
@@ -195,23 +198,20 @@ def add_planet():
 @app.route('/update_planet', methods=['PUT'])
 @jwt_required
 def update_planet():
-    if request.is_json:
-        pass
-    else:
-        planet_id = int(request.form['planet_id'])
+    planet_id = int(request.form['planet_id'])
 
-        planet = Planet.query.filter_by(planet_id=planet_id)
-        if planet:
-            planet.planet_name = request.form['planet_name']
-            planet.planet_type = request.form['planet_type']
-            planet.home_star = request.form['home_star']
-            planet.mass = float(request.form['mass'])
-            planet.radius = float(request.form['radius'])
-            planet.distance = float(request.form['distance'])
-            db.session.commit()
-            return jsonify(message="You updated a planet")
-        else:
-            return jsonify(message="That planet does not exist"), 404
+    planet = Planet.query.filter_by(planet_id=planet_id).first()
+    if planet:
+        planet.planet_name = request.form['planet_name']
+        planet.planet_type = request.form['planet_type']
+        planet.home_star = request.form['home_star']
+        planet.mass = float(request.form['mass'])
+        planet.radius = float(request.form['radius'])
+        planet.distance = float(request.form['distance'])
+        db.session.commit()
+        return jsonify(message="You updated a planet")
+    else:
+        return jsonify(message="That planet does not exist"), 404
 
 
 @app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
@@ -220,6 +220,7 @@ def remove_planet(planet_id: int):
     planet = Planet.query.filter_by(planet_id=planet_id).first()
     if planet:
         db.session.delete(planet)
+        db.session.commit()
         return jsonify(message="You deleted a planet: " + str(planet_id))
     else:
         return jsonify(message="That planet doesn't exist."), 404

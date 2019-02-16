@@ -99,15 +99,7 @@ def hello_world():
 
 @app.route('/super_simple', methods=['GET'])
 def super_simple():
-    return jsonify(message='Hello from the Planetary API'), 200
-
-
-@app.route('/parameters/<string:name>/<int:age>', methods=['GET'])
-def parameters(name: str, age: int):
-    if age < 18:
-        return jsonify(message=str(age) + " is too low."), 401
-    else:
-        return jsonify(name=name.upper(), ageNextYear=age + 1), 200
+        return jsonify(message='Hello from the Planetary API'), 200
 
 
 @app.route('/register', methods=['POST'])

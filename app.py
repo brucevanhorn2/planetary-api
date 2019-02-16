@@ -62,10 +62,6 @@ class User(db.Model):
     email = Column(String, unique=True)
     password = Column(String)
 
-    def __repr__(self):
-        return "<User(first_name='%s', last_name='%s', email='%s', password='%s')>" % (
-            self.first_name, self.last_name, self.email, self.password)
-
 
 class Planet(db.Model):
     __tablename__ = 'planets'
@@ -76,20 +72,6 @@ class Planet(db.Model):
     mass = Column(Float)
     radius = Column(Float)
     distance = Column(Float)
-
-    def to_dict(self):
-        return {"planet_id": self.planet_id,
-                "planet_name": self.planet_name,
-                "planet_type":  self.planet_type,
-                "home_star": self.home_star,
-                "mass": self.mass,
-                "radius": self.radius,
-                "distance": self.distance
-        }
-    def __repr__(self):
-        return "<Planet(planet_id='%s', planet_name='%s', planet_type='%s', home_star='%s', mass='%f', radius='%f', " \
-               "distance='%f')>" % (self.planet_id, self.planet_name, self.planet_type, self.home_star, self.mass,
-                                    self.radius, self.distance)
 
 
 @app.route('/')

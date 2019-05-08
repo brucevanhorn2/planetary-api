@@ -124,6 +124,24 @@ def not_found():
     return jsonify(message='The resource could not be found'), 404
 
 
+@app.route('parameters')
+def parameters():
+    name = request.args.get('name')
+    age = int(request.args.get('age'))
+    if age < 18:
+        return jsonify({'message': "Sorry, " + name + ".  You're too young for this."}), 401
+    else:
+        return jsonify({'message': "Welcome, " + name + ".  You are old enough."}), 401
+
+
+@app.route('/url_variables/<string: name>/<int: age>')
+def url_variables(name: str, age: int):
+    if age < 18:
+        return jsonify({'message': "Sorry, " + name + ".  You're too young for this."}), 401
+    else:
+        return jsonify({'message': "Welcome, " + name + ".  You are old enough."}), 401
+
+
 @app.route('/register', methods=['POST'])
 def register():
     email = request.form['email']
